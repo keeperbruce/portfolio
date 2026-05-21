@@ -1,15 +1,12 @@
 ---
+import { getCollection } from 'astro:content';
 import Layout from '../layouts/Layouts.astro';
+
 const base = import.meta.env.BASE_URL;
 
-const photos = [
-	{ id: 1, src: "/img/Foto_edit.png", title: "Cielo Notturno Da Campetto", tech: "Galaxy S23 — Expert RAW, ISO 600"},
-  	{ id: 2, src: "/img/via_lattea.jpg", title: "La Via Lattea?", tech: "Galaxy S23 — Expert RAW"},
-  	{ id: 3, src: "/img/Panchina_solitaria.jpg", title: "Panchina Solitaria",tech: "Galaxy S23 — Expert RAW"},
-  	{ id: 4, src: "/img/Rotore_non_nullo.png", title: "Rotore Non nullo", tech: "Galaxy S23 — Expert RAW"},
-  	{ id: 5, src: "/img/Sembra_un_sogno.jpg", title: "Sembra un sogno", tech: "Galaxy S23 — Expert RAW"},
-  	{ id: 6, src: "/img/Stelle_In_Campagna_Polacca.jpg", title: "Stelle in Campagna Polacca", tech: "Galaxy S23 — Expert RAW"},
-];
+// Legge automaticamente tutti i file Markdown nella cartella src/content/photos/
+// e li ordina se vuoi usare una data, altrimenti li restituisce nell'ordine in cui li trova.
+const allPhotos = await getCollection('photos');
 ---
 
 <Layout title="Photography Portfolio">
@@ -25,28 +22,33 @@ const photos = [
       <div class="view-controls">
         <button id="btn-gallery" class="active">Gallery</button>
         <span class="separator">/</span>
-        <button id="btn-market">Marketplace</button>
+        <button id="btn-market">Griglia</button>
       </div>
     </header>
 
     <!-- GRIGLIA FOTO -->
     <div id="portfolio-grid" class="view-gallery-mode">
-      {photos.map((photo) => (
-        <div class="photo-card">
-          
-          <div class="image-wrapper">
-            <img src={`${base}${photo.src}`} alt={photo.title} loading="lazy" />
-          </div>
-          
-          <div class="meta-container">
-            <div class="meta-text">
-              <h3>{photo.title}</h3>
-              <p>{photo.tech}</p>
+
+    <!-- INSERISCI QUESTA RIGA: -->
+      {allPhotos.length === 0 && <h2 style="color:red; margin-top: 50px;">ERRORE: Astro non trova nessun file in src/content/photos/</h2>}
+      {allPhotos.map((photo) => (
+        <a href={`${base}/photo/${photo.id}`} class="photo-card-link">
+          <div class="photo-card">
+            
+            <div class="image-wrapper">
+              <!-- Legge i dati dal frontmatter del file Markdown -->
+              <img src={`${base}/${photo.data.src}`} alt={photo.data.title} loading="lazy" />
             </div>
-            <span class="market-tag">{photo.price}</span>
+            
+            <div class="meta-container">
+              <div class="meta-text">
+                <h3>{photo.data.title}</h3>
+                <p>{photo.data.tech}</p>
+              </div>
+            </div>
+            
           </div>
-          
-        </div>
+        </a>
       ))}
     </div>
 
@@ -159,6 +161,13 @@ const photos = [
     display: none; /* Prezzo nascosto in gallery */
   }
 
+  .photo-card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    width: 100%;
+  }
+
   /* ==========================================================================
      MODALITÀ 2: MARKETPLACE
      ========================================================================== */
@@ -230,7 +239,101 @@ const photos = [
     transform: translateY(0);
     filter: blur(0);
   }
-</style>
+/* ==========================================================================
+     LAYOUT A ZIG-ZAG DEFINITIVO
+     ========================================================================== */
+  @media (min-width: 900px) {
+    /* 1. Allarghiamo il contenitore a tutto schermo (Evadiamo dal layout base) */
+    .view-gallery-mode {
+      display: flex !important;
+      flex-direction: column;
+      gap: 10rem;
+      width: 100vw !important;
+      position: relative;
+      left: 50%;
+      right: 50%;
+      margin-left: -50vw !important;
+      margin-right: -50vw !important;
+      max-width: 100vw !important;
+      padding: 0 8vw !important; /* Margine laterale per non toccare i bordi del Mac */
+      box-sizing: border-box;
+    }
+
+    /* 2. Diciamo al link di prendere tutto lo schermo */
+    .view-gallery-mode .photo-card-link {
+      width: 100% !important;
+      display: block !important;
+    }
+
+    /* 3. DISTRUGGIAMO LA GABBIA: La card deve allargarsi al 100% */
+    .view-gallery-mode .photo-card {
+      width: 100% !important;
+      max-width: none !important; /* <-- Questo era il colpevole! */
+      display: flex !important;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6rem;
+      background: none !important;
+      box-shadow: none !important;
+      margin: 0 !important;
+    }
+
+    /* CARTE DISPARI (Foto a Sinistra) */
+    .view-gallery-mode .photo-card-link:nth-child(odd) .photo-card {
+      flex-direction: row !important;
+    }
+
+    /* CARTE PARI (Foto a Destra) */
+    .view-gallery-mode .photo-card-link:nth-child(even) .photo-card {
+      flex-direction: row-reverse !important;
+      text-align: right;
+    }
+
+    /* 4. Assegniamo esattamente le larghezze per spingerle ai bordi opposti */
+    .view-gallery-mode .image-wrapper {
+      flex: 0 0 65% !important; /* L'immagine prende il 65% della larghezza */
+      max-width: 65% !important;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      transition: transform 0.5s ease;
+    }
+
+    .view-gallery-mode .meta-container {
+      flex: 0 0 30% !important; /* Il testo prende il restante 30% */
+      max-width: 30% !important;
+      padding: 0 !important;
+    }
+
+    /* Immagini e Testi */
+    .view-gallery-mode .image-wrapper img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+    }
+
+    .view-gallery-mode .meta-text h3 {
+      font-size: 2.5rem;
+      font-weight: 300;
+      margin-bottom: 1rem;
+      color: #18181b;
+      line-height: 1.2;
+    }
+
+    .view-gallery-mode .meta-text p {
+      font-size: 1.15rem;
+      color: #71717a;
+      line-height: 1.6;
+    }
+
+    /* Effetto Hover */
+    .view-gallery-mode .photo-card-link:hover .image-wrapper {
+      transform: translateY(-8px);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+    }
+  }
+  </style>
 
 <script>
   // Logica che gestisce tutto nel browser

@@ -1,0 +1,375 @@
+---
+import { getCollection, render } from 'astro:content'; // <-- La parola chiave mancante era qui!
+import Layout from '../../layouts/Layouts.astro';
+
+export async function getStaticPaths() {
+  const photoEntries = await getCollection('photos');
+  return photoEntries.map(entry => ({
+    params: { id: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry); 
+const base = import.meta.env.BASE_URL;
+---
+
+<Layout title={`${entry.data.title} | Keeperbruce Portfolio`}>
+  <!-- Pulsante per tornare alla galleria -->
+  <nav class="back-navigation">
+    <a href={`${base}/`} class="back-link">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      Torna al Portfolio
+    </a>
+  </nav>
+
+  <main class="split-layout">
+    
+    <!-- SINISTRA: Zona Immagine con funzionalità di Zoom -->
+    <div class="image-zone">
+      <div class="image-sticky-container">
+        <img 
+          id="zoomable-image"
+          src={`${base}/${entry.data.src}`} 
+          alt={entry.data.title} 
+          class="detail-image"
+        />
+        <div class="zoom-hint">Clicca per espandere</div>
+      </div>
+    </div>
+
+    <!-- DESTRA: Zona Testo e Dettagli -->
+    <div class="content-zone">
+      <header class="story-header">
+        <h1>{entry.data.title}</h1>
+        <div class="meta-tags">
+          <span class="tech-badge">{entry.data.tech}</span>
+        </div>
+      </header>
+
+      <article class="prose">
+        <!-- Renderizza il contenuto del file Markdown -->
+        <Content />
+      </article>
+      
+      <div class="action-area">
+        <button class="inquire-btn">Richiedi informazioni riguardo lo scatto</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Overlay per l'effetto Zoom a pieno schermo -->
+  <div id="lightbox-overlay" class="lightbox-hidden">
+    <button id="close-lightbox" class="close-btn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+    <img id="lightbox-image" src={`${base}/${entry.data.src}`} alt={entry.data.title} />
+  </div>
+</Layout>
+
+<style is:global>
+  /* ==========================================================================
+     LAYOUT SPACCATO (Split Layout)
+     ========================================================================== */
+  .back-navigation {
+    padding: 2rem 3rem 0;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #71717a;
+    text-decoration: none;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    transition: color 0.3s ease;
+  }
+
+  .back-link:hover {
+    color: #18181b;
+  }
+
+  .split-layout {
+    display: grid;
+    /* Su desktop: 60% spazio all'immagine, 40% al testo */
+    grid-template-columns: 1.5fr 1fr;
+    gap: 4rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem 3rem 6rem;
+    align-items: start;
+  }
+
+  /* Rende la foto fissa mentre il testo scorre se è molto lungo */
+  .image-zone {
+    position: sticky;
+    top: 2rem;
+  }
+
+  .image-sticky-container {
+    position: relative;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #f4f4f5;
+    cursor: zoom-in;
+  }
+
+  .detail-image {
+    width: 100%;
+    height: auto;
+    max-height: 85vh; /* Non supera mai l'altezza dello schermo */
+    object-fit: contain;
+    display: block;
+    transition: transform 0.4s ease;
+  }
+
+  .image-sticky-container:hover .detail-image {
+    transform: scale(1.02); /* Leggero feedback visivo al passaggio del mouse */
+  }
+
+  .zoom-hint {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .image-sticky-container:hover .zoom-hint {
+    opacity: 1;
+  }
+
+  /* ==========================================================================
+     STILI DEL TESTO E METADATI
+     ========================================================================== */
+  .story-header {
+    margin-bottom: 2.5rem;
+    border-bottom: 1px solid #e4e4e7;
+    padding-bottom: 2rem;
+  }
+
+  .story-header h1 {
+    font-size: 2.5rem;
+    font-weight: 300;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    color: #18181b;
+  }
+
+  .meta-tags {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .tech-badge, .price-badge {
+    font-size: 0.75rem;
+    font-family: monospace;
+    padding: 0.3rem 0.6rem;
+    background: #f4f4f5;
+    border-radius: 4px;
+    color: #52525b;
+  }
+
+  .price-badge {
+    background: #18181b;
+    color: #fff;
+  }
+
+  /* Stili per il contenuto generato dal Markdown */
+  .prose {
+    font-size: 1.05rem;
+    line-height: 1.8;
+    color: #3f3f46;
+  }
+
+  .prose p {
+    margin-bottom: 1.5rem;
+  }
+
+  .prose h3 {
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin: 2.5rem 0 1rem;
+    color: #18181b;
+  }
+
+  .action-area {
+    margin-top: 4rem;
+  }
+
+  .inquire-btn {
+    width: 100%;
+    padding: 1.2rem;
+    background: transparent;
+    border: 1px solid #18181b;
+    color: #18181b;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .inquire-btn:hover {
+    background: #18181b;
+    color: #fff;
+  }
+
+/* ==========================================================================
+     LIGHTBOX (Zoom a pieno schermo)
+     ========================================================================== */
+  #lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 10, 10, 0.98);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  #lightbox-overlay:not(.lightbox-hidden) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #lightbox-image {
+    max-width: 90vw;
+    max-height: 90vh;
+    object-fit: contain;
+    transform: scale(0.95);
+    /* Gestiamo lo zoom fluidamente, ma il movimento del mouse (transform-origin) sarà istantaneo */
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform-origin 0s;
+    cursor: zoom-in;
+  }
+
+  #lightbox-overlay:not(.lightbox-hidden) #lightbox-image {
+    transform: scale(1);
+  }
+
+  /* La nuova classe per quando l'immagine è zoomata */
+  #lightbox-overlay:not(.lightbox-hidden) #lightbox-image.is-magnified {
+    transform: scale(2.5); /* Quanto vuoi ingrandire l'immagine (250%) */
+    cursor: zoom-out;
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0.5rem;
+    z-index: 10000;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  .close-btn:hover {
+    opacity: 1;
+  }
+
+  /* ==========================================================================
+     RESPONSIVE (Per schermi piccoli)
+     ========================================================================== */
+  @media (max-width: 900px) {
+    .split-layout {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      padding: 1rem 1.5rem 4rem;
+    }
+    .image-zone {
+      position: relative;
+      top: 0;
+    }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const triggerImage = document.getElementById('zoomable-image');
+    const lightbox = document.getElementById('lightbox-overlay');
+    const closeBtn = document.getElementById('close-lightbox');
+    const lightboxImage = document.getElementById('lightbox-image'); 
+
+    if (!triggerImage || !lightbox || !closeBtn || !lightboxImage) return;
+
+    // Apre la lightbox
+    triggerImage.addEventListener('click', () => {
+      lightbox.classList.remove('lightbox-hidden');
+      document.body.style.overflow = 'hidden'; 
+    });
+
+    // Funzione centralizzata per chiudere e resettare lo zoom
+    const closeLightbox = () => {
+      lightbox.classList.add('lightbox-hidden');
+      document.body.style.overflow = ''; 
+      lightboxImage.classList.remove('is-magnified');
+      lightboxImage.style.transformOrigin = 'center center';
+    };
+
+    closeBtn.addEventListener('click', closeLightbox);
+
+    // Chiude cliccando sullo sfondo scuro (non sull'immagine)
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    // Chiude col tasto Esc
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !lightbox.classList.contains('lightbox-hidden')) {
+        closeLightbox();
+      }
+    });
+
+    // --- LOGICA DI ZOOM INTERATTIVO ---
+
+    // 1. Attiva/Disattiva lo zoom al click
+    lightboxImage.addEventListener('click', (e) => {
+      e.stopPropagation(); // Evita che il click attraversi l'immagine e chiuda la lightbox
+      lightboxImage.classList.toggle('is-magnified');
+
+      if (lightboxImage.classList.contains('is-magnified')) {
+        updateTransformOrigin(e); // Centra lo zoom subito sul punto cliccato
+      } else {
+        lightboxImage.style.transformOrigin = 'center center';
+      }
+    });
+
+    // 2. Naviga l'immagine muovendo il mouse
+    lightboxImage.addEventListener('mousemove', (e) => {
+      if (lightboxImage.classList.contains('is-magnified')) {
+        updateTransformOrigin(e);
+      }
+    });
+
+    // Calcola le coordinate per spostare l'inquadratura
+    function updateTransformOrigin(e) {
+      const xPos = (e.clientX / window.innerWidth) * 100;
+      const yPos = (e.clientY / window.innerHeight) * 100;
+      lightboxImage.style.transformOrigin = `${xPos}% ${yPos}%`;
+    }
+  });
+</script>
